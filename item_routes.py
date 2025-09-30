@@ -1,8 +1,8 @@
 from fastapi import APIRouter
 
-order_router = APIRouter(prefix="/order", tags=["order"])
+item_router = APIRouter(prefix="/item", tags=["item"])
 
-@order_router.get("/list")
+@item_router.get("/list")
 async def listar():
     """
     Essa é a rota de listagem do nosso sistema.
