@@ -5,6 +5,8 @@ import os
 
 load_dotenv() #Carrega as variáveis de ambiente do arquivo .env
 SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
 
 # para rodar o codigo: python -m uvicorn main:app --reload
 app = FastAPI()

@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, Boolean, ForeignKey
+from sqlalchemy import create_engine, Column, Integer, String, Boolean, ForeignKey, Float
 from sqlalchemy.orm import declarative_base
 
 # cria conexão com o banco de dados
@@ -35,7 +35,7 @@ class Item(Base):
     id = Column("id", Integer, primary_key=True, autoincrement=True)
     title = Column("title", String, nullable=False)
     description = Column("description", String, nullable=False)
-    price = Column("price", Integer, nullable=False)
+    price = Column("price", Float, nullable=False)
     available = Column("available", Boolean, default=True)
 
     def _init_(self, title, description, price, available):
@@ -53,7 +53,7 @@ class ItemCompra(Base):
     user_id = Column("user_id", ForeignKey("users.id"), nullable=False)
     quantity = Column("quantity", Integer, nullable=False)
 
-    def _init_(self, item_id, user_id, quantity):
+    def _init_(self, item_id, user_id, quantity = 1):
         self.item_id = item_id
         self.user_id = user_id 
         self.quantity = quantity

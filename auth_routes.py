@@ -1,29 +1,79 @@
 from fastapi import APIRouter, Depends, HTTPException
 from models import User
 from dependencies import catch_session
-from main import bycrypt_context
-from schemas import UserSchema
+from main import bycrypt_context, SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
+from schemas import UserSchema, LoginSchema
 from sqlalchemy.orm import Session
+from jose import jwt, JWTError
+from datetime import datetime, timedelta, timezone
 
 auth_router = APIRouter(prefix="/auth", tags=["autenticate"])
 
+# Função para criar um token JWT (simulado aqui)
+def create_tokenJWT(user_id, duration_token=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)):
+    expire_date = datetime.now(timezone.utc) + duration_token # Data de expiração do token
+    info = {
+        "sub": user_id,
+        "exp": expire_date
+    }
+    jwt_decode = jwt.encode(info, SECRET_KEY, algorithm=ALGORITHM)
+    return jwt_decode
+
+def verify_tokenJWT(token, session: Session = Depends(catch_session)):
+    user = session.query(User).filter(User.id).first()
+    return user
+
+def authenticate_user(email, password, session):
+    user = session.query(User).filter(User.email == email).first()
+    if not user:
+        return False
+    elif not bycrypt_context.verify(password, user.password): #Senha digitada é igual a do banco?
+        return False
+    return user
+
 @auth_router.get("/")
-async def register():
+async def home():
     """
     Essa é a rota de register do nosso sistema.
     """
 
-    return {"mensagem" : "Você acessou a rota de register", "autenticado": False}
+    return {"mensagem" : f"Você acessou a rota de register", "autenticado": False}
 
 @auth_router.post("/register")
 async def register(user_schema: UserSchema, session: Session = Depends(catch_session)):
     #Realiza as consultas
     user = session.query(User).filter(User.email == user_schema.email).first()
     if (user):
+        #User já existe
         raise HTTPException(status_code=400, detail="Usuário já cadastrado")
     else:
         crypto_password = bycrypt_context.hash( user_schema.password)
         new_user = User(name=user_schema.name, email=user_schema.email, password=crypto_password, active=user_schema.active, admin=user_schema.admin)
         session.add(new_user)
         session.commit()
-        return {"mensagem": "Usuário cadastrado com sucesso {user_schema.email}"}
+
+        return {"mensagem": f"Usuário cadastrado com sucesso: {new_user.email}"}
+    
+
+@auth_router.post("/login")
+async def login(login_schema: LoginSchema, session: Session = Depends(catch_session)):
+    user = authenticate_user(login_schema.email, login_schema.password, session) #Chama a função que autentica o usuário
+    if not user:
+        raise HTTPException(status_code=400, detail="Usuário não cadastrado ou credencias inválidas")
+    else:
+        access_token = create_tokenJWT(user.id)
+        refresh_token = create_tokenJWT(user.id, duration_token=timedelta(days=7)) #No caso, o refresh token é igual ao access token
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token, 
+            "token_type": "Bearer"
+            }           
+    
+@auth_router.get("/refresh_token")
+async def refresh_token(token):
+    user = verify_tokenJWT(token)
+    access_token = create_tokenJWT(user.id)
+    return {
+            "access_token": access_token,
+            "token_type": "Bearer"
+            }      
