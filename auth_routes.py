@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
 from models import User
-from dependencies import catch_session
+from dependencies import catch_session, verify_tokenJWT
 from main import bycrypt_context, SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 from schemas import UserSchema, LoginSchema
 from sqlalchemy.orm import Session
 from jose import jwt, JWTError
 from datetime import datetime, timedelta, timezone
+from fastapi.security import OAuth2PasswordRequestForm
 
 auth_router = APIRouter(prefix="/auth", tags=["autenticate"])
 
@@ -13,15 +14,11 @@ auth_router = APIRouter(prefix="/auth", tags=["autenticate"])
 def create_tokenJWT(user_id, duration_token=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)):
     expire_date = datetime.now(timezone.utc) + duration_token # Data de expiração do token
     info = {
-        "sub": user_id,
+        "sub": str(user_id),
         "exp": expire_date
     }
     jwt_decode = jwt.encode(info, SECRET_KEY, algorithm=ALGORITHM)
     return jwt_decode
-
-def verify_tokenJWT(token, session: Session = Depends(catch_session)):
-    user = session.query(User).filter(User.id).first()
-    return user
 
 def authenticate_user(email, password, session):
     user = session.query(User).filter(User.email == email).first()
@@ -67,13 +64,27 @@ async def login(login_schema: LoginSchema, session: Session = Depends(catch_sess
             "access_token": access_token,
             "refresh_token": refresh_token, 
             "token_type": "Bearer"
-            }           
+            }
+
+#Função para o Autorize form do FASTAPI
+@auth_router.post("/login-form")
+async def login_form(form_data: OAuth2PasswordRequestForm = Depends(), session: Session = Depends(catch_session)):
+    user = authenticate_user(form_data.username, form_data.password, session) #Chama a função que autentica o usuário
+    if not user:
+        raise HTTPException(status_code=400, detail="Usuário não cadastrado ou credencias inválidas")
+    else:
+        access_token = create_tokenJWT(user.id)
+        refresh_token = create_tokenJWT(user.id, duration_token=timedelta(days=7)) #No caso, o refresh token é igual ao access token
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token, 
+            "token_type": "Bearer"
+            }                
     
 @auth_router.get("/refresh_token")
-async def refresh_token(token):
-    user = verify_tokenJWT(token)
+async def refresh_token(user: User = Depends(verify_tokenJWT)):
     access_token = create_tokenJWT(user.id)
     return {
-            "access_token": access_token,
-            "token_type": "Bearer"
-            }      
+        "access_token": access_token,
+        "token_type": "Bearer"
+        }      
