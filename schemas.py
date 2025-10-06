@@ -34,8 +34,8 @@ class ItemSchema(BaseModel):
 
 #Schema para ItemCompra
 class ItemCompraSchema(BaseModel):
-    item_id: int
-    user_id: int
+    # item_id: int
+    # user_id: int
     quantity: int
 
     class Config:
