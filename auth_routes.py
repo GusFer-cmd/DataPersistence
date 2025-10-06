@@ -53,8 +53,8 @@ async def home():
 @auth_router.post("/register")
 async def register(user_schema: UserSchema, session: Session = Depends(catch_session), user: User = Depends(verify_tokenJWT)):
     #Apenas usuários administradores podem criar novos usuários administradores
-    if user_schema.admin and not user.admin:
-        raise HTTPException(status_code=403, detail="Apenas administradores podem criar novos usuários administradores")
+    # if user_schema.admin and not user.admin:
+    #     raise HTTPException(status_code=403, detail="Apenas administradores podem criar novos usuários administradores")
     #Realiza as consultas
     user = session.query(User).filter(User.email == user_schema.email).first()
     if (user):
