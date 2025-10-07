@@ -36,7 +36,7 @@ class ItemSchema(BaseModel):
 class ItemCompraSchema(BaseModel):
     # item_id: int
     # user_id: int
-    quantity: int
+    quantity: int = 1
 
     class Config:
         from_attributes = True
